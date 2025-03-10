@@ -18,6 +18,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
+// Plan data model with priority
 enum Priority { low, medium, high }
 
 class Plan {
@@ -48,6 +49,7 @@ class _PlanManagerScreenState extends State<PlanManagerScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
+  // Show modal to create a new plan
   void _showCreatePlanModal(BuildContext context) {
     String name = '';
     String description = '';
@@ -130,6 +132,7 @@ class _PlanManagerScreenState extends State<PlanManagerScreen> {
     );
   }
 
+  // Edit plan details
   void _editPlan(int index) {
     String name = plans[index].name;
     String description = plans[index].description;
@@ -192,12 +195,18 @@ class _PlanManagerScreenState extends State<PlanManagerScreen> {
     );
   }
 
+  // Get events for a specific day
+  List<Plan> _getEventsForDay(DateTime day) {
+    return plans.where((plan) => isSameDay(plan.date, day)).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Adoption & Travel Planner')),
       body: Column(
         children: [
+          // Interactive Calendar
           TableCalendar(
             firstDay: DateTime.utc(2020, 1, 1),
             lastDay: DateTime.utc(2030, 12, 31),
@@ -209,11 +218,30 @@ class _PlanManagerScreenState extends State<PlanManagerScreen> {
                 _focusedDay = focusedDay;
               });
             },
+            eventLoader: _getEventsForDay,
             calendarStyle: const CalendarStyle(
               todayDecoration: BoxDecoration(color: Colors.blueAccent, shape: BoxShape.circle),
               selectedDecoration: BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
             ),
           ),
+          // Drag Target for Plans
+          DragTarget<Plan>(
+            onAccept: (plan) {
+              setState(() {
+                plan.date = _selectedDay ?? DateTime.now();
+                plans.add(plan);
+                plans.sort((a, b) => b.priority.index.compareTo(a.priority.index));
+              });
+            },
+            builder: (context, candidateData, rejectedData) {
+              return Container(
+                height: 50,
+                color: Colors.blue[100],
+                child: const Center(child: Text('Drag New Plans Here')),
+              );
+            },
+          ),
+          // Plan List with Checkbox
           Expanded(
             child: ListView.builder(
               itemCount: plans.length,
@@ -222,28 +250,40 @@ class _PlanManagerScreenState extends State<PlanManagerScreen> {
                 return GestureDetector(
                   onDoubleTap: () {
                     setState(() {
-                      plans.removeAt(index);
+                      plans.removeAt(index); // Remove plan on double-tap
                     });
                   },
                   onLongPress: () => _editPlan(index),
-                  child: ListTile(
-                    leading: Checkbox(
-                      value: plan.isCompleted,
-                      onChanged: (bool? value) {
-                        setState(() {
-                          plan.isCompleted = value ?? false;
-                        });
-                      },
-                    ),
-                    title: Text(
-                      '${plan.name} (${plan.priority.toString().split('.').last})',
-                      style: TextStyle(
-                        color: plan.isCompleted ? Colors.grey : Colors.black,
-                        decoration: plan.isCompleted ? TextDecoration.lineThrough : null,
+                  child: Draggable<Plan>(
+                    data: plan,
+                    feedback: Material(
+                      child: Container(
+                        width: 200,
+                        padding: const EdgeInsets.all(8.0),
+                        color: Colors.blue.withOpacity(0.7),
+                        child: Text(plan.name, style: const TextStyle(color: Colors.white)),
                       ),
                     ),
-                    subtitle: Text('${plan.description} - ${plan.date.toString().substring(0, 10)}'),
-                    tileColor: plan.isCompleted ? Colors.green[100] : Colors.yellow[100],
+                    childWhenDragging: Container(),
+                    child: ListTile(
+                      leading: Checkbox(
+                        value: plan.isCompleted,
+                        onChanged: (bool? value) {
+                          setState(() {
+                            plan.isCompleted = value ?? false; // Toggle completion with checkbox
+                          });
+                        },
+                      ),
+                      title: Text(
+                        '${plan.name} (${plan.priority.toString().split('.').last})',
+                        style: TextStyle(
+                          color: plan.isCompleted ? Colors.grey : Colors.black,
+                          decoration: plan.isCompleted ? TextDecoration.lineThrough : null,
+                        ),
+                      ),
+                      subtitle: Text('${plan.description} - ${plan.date.toString().substring(0, 10)}'),
+                      tileColor: plan.isCompleted ? Colors.green[100] : Colors.yellow[100],
+                    ),
                   ),
                 );
               },
