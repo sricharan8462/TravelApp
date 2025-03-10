@@ -48,6 +48,150 @@ class _PlanManagerScreenState extends State<PlanManagerScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
+  void _showCreatePlanModal(BuildContext context) {
+    String name = '';
+    String description = '';
+    DateTime date = _selectedDay ?? DateTime.now();
+    Priority selectedPriority = Priority.low;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      decoration: const InputDecoration(labelText: 'Plan Name'),
+                      onChanged: (value) => name = value,
+                    ),
+                    TextField(
+                      decoration: const InputDecoration(labelText: 'Description'),
+                      onChanged: (value) => description = value,
+                    ),
+                    DropdownButton<Priority>(
+                      value: selectedPriority,
+                      items: Priority.values
+                          .map((priority) => DropdownMenuItem(
+                                value: priority,
+                                child: Text(priority.toString().split('.').last),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        setModalState(() {
+                          selectedPriority = value!;
+                        });
+                      },
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        final pickedDate = await showDatePicker(
+                          context: context,
+                          initialDate: date,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2030),
+                        );
+                        if (pickedDate != null) {
+                          setModalState(() {
+                            date = pickedDate;
+                          });
+                        }
+                      },
+                      child: Text('Selected Date: ${date.toString().substring(0, 10)}'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        if (name.isNotEmpty) {
+                          setState(() {
+                            plans.add(Plan(
+                              name: name,
+                              description: description,
+                              date: date,
+                              priority: selectedPriority,
+                            ));
+                            plans.sort((a, b) => b.priority.index.compareTo(a.priority.index));
+                          });
+                          Navigator.pop(context);
+                        }
+                      },
+                      child: const Text('Add Plan'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _editPlan(int index) {
+    String name = plans[index].name;
+    String description = plans[index].description;
+    Priority priority = plans[index].priority;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Edit Plan'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    decoration: const InputDecoration(labelText: 'Plan Name'),
+                    controller: TextEditingController(text: name),
+                    onChanged: (value) => name = value,
+                  ),
+                  TextField(
+                    decoration: const InputDecoration(labelText: 'Description'),
+                    controller: TextEditingController(text: description),
+                    onChanged: (value) => description = value,
+                  ),
+                  DropdownButton<Priority>(
+                    value: priority,
+                    items: Priority.values
+                        .map((p) => DropdownMenuItem(
+                              value: p,
+                              child: Text(p.toString().split('.').last),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        priority = value!;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      plans[index].name = name;
+                      plans[index].description = description;
+                      plans[index].priority = priority;
+                      plans.sort((a, b) => b.priority.index.compareTo(a.priority.index));
+                    });
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -66,14 +210,8 @@ class _PlanManagerScreenState extends State<PlanManagerScreen> {
               });
             },
             calendarStyle: const CalendarStyle(
-              todayDecoration: BoxDecoration(
-                color: Colors.blueAccent,
-                shape: BoxShape.circle,
-              ),
-              selectedDecoration: BoxDecoration(
-                color: Colors.blue,
-                shape: BoxShape.circle,
-              ),
+              todayDecoration: BoxDecoration(color: Colors.blueAccent, shape: BoxShape.circle),
+              selectedDecoration: BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
             ),
           ),
           Expanded(
@@ -87,6 +225,7 @@ class _PlanManagerScreenState extends State<PlanManagerScreen> {
                       plans.removeAt(index);
                     });
                   },
+                  onLongPress: () => _editPlan(index),
                   child: ListTile(
                     leading: Checkbox(
                       value: plan.isCompleted,
@@ -100,25 +239,21 @@ class _PlanManagerScreenState extends State<PlanManagerScreen> {
                       '${plan.name} (${plan.priority.toString().split('.').last})',
                       style: TextStyle(
                         color: plan.isCompleted ? Colors.grey : Colors.black,
-                        decoration:
-                            plan.isCompleted
-                                ? TextDecoration.lineThrough
-                                : null,
+                        decoration: plan.isCompleted ? TextDecoration.lineThrough : null,
                       ),
                     ),
-                    subtitle: Text(
-                      '${plan.description} - ${plan.date.toString().substring(0, 10)}',
-                    ),
-                    tileColor:
-                        plan.isCompleted
-                            ? Colors.green[100]
-                            : Colors.yellow[100],
+                    subtitle: Text('${plan.description} - ${plan.date.toString().substring(0, 10)}'),
+                    tileColor: plan.isCompleted ? Colors.green[100] : Colors.yellow[100],
                   ),
                 );
               },
             ),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showCreatePlanModal(context),
+        child: const Icon(Icons.add),
       ),
     );
   }
