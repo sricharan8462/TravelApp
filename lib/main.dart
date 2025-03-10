@@ -44,6 +44,7 @@ class PlanManagerScreen extends StatefulWidget {
 }
 
 class _PlanManagerScreenState extends State<PlanManagerScreen> {
+  List<Plan> plans = [];
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
@@ -65,8 +66,56 @@ class _PlanManagerScreenState extends State<PlanManagerScreen> {
               });
             },
             calendarStyle: const CalendarStyle(
-              todayDecoration: BoxDecoration(color: Colors.blueAccent, shape: BoxShape.circle),
-              selectedDecoration: BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
+              todayDecoration: BoxDecoration(
+                color: Colors.blueAccent,
+                shape: BoxShape.circle,
+              ),
+              selectedDecoration: BoxDecoration(
+                color: Colors.blue,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: plans.length,
+              itemBuilder: (context, index) {
+                final plan = plans[index];
+                return GestureDetector(
+                  onDoubleTap: () {
+                    setState(() {
+                      plans.removeAt(index);
+                    });
+                  },
+                  child: ListTile(
+                    leading: Checkbox(
+                      value: plan.isCompleted,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          plan.isCompleted = value ?? false;
+                        });
+                      },
+                    ),
+                    title: Text(
+                      '${plan.name} (${plan.priority.toString().split('.').last})',
+                      style: TextStyle(
+                        color: plan.isCompleted ? Colors.grey : Colors.black,
+                        decoration:
+                            plan.isCompleted
+                                ? TextDecoration.lineThrough
+                                : null,
+                      ),
+                    ),
+                    subtitle: Text(
+                      '${plan.description} - ${plan.date.toString().substring(0, 10)}',
+                    ),
+                    tileColor:
+                        plan.isCompleted
+                            ? Colors.green[100]
+                            : Colors.yellow[100],
+                  ),
+                );
+              },
             ),
           ),
         ],
